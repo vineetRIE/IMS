@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="text-center mt-5">Withdraw Items from {{ selected_machine.name }}</h2>
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <form method="POST" class="mb-4">
+            {% if user_role == 'admin' %}
+            <div class="mb-3">
+                <label for="machine_id" class="form-label">Select Machine</label>
+                <select class="form-select" id="machine_id" name="machine_id">
+                    {% for machine in machines %}
+                        <option value="{{ machine.id }}" {% if machine.id == selected_machine.id %}selected{% endif %}>{{ machine.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <button type="submit" class="btn btn-primary mb-3">Change Machine</button>
+        </form>
+        <form method="GET" class="mb-4" id="filter-form">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="category" class="form-label">Category</label>
+                    <select class="form-select" id="category" name="category">
+                        <option value="">All Categories</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat }}" {% if selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="sub_category" class="form-label">Sub-Category</label>
+                    <select class="form-select" id="sub_category" name="sub_category">
+                        <option value="">All Sub-Categories</option>
+                        {% for sub_cat in sub_categories %}
+                            <option value="{{ sub_cat }}" {% if selected_sub_category == sub_cat %}selected{% endif %}>{{ sub_cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="item_number" class="form-label">Item Number</label>
+                    <input type="text" class="form-control" id="item_number" name="item_number" value="{{ selected_item_number }}">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
+
+        {% if items %}
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="submit_withdrawal">
+                <div class="mb-3">
+                    <label for="description" class="form-label">Withdrawal Description</label>
+                    <textarea class="form-control" id="description" name="description" rows="4" required></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="photo" class="form-label">Photo (Optional, max 5MB, .jpg/.jpeg/.png)</label>
+                    <input type="file" class="form-control" id="photo" name="photo" accept=".jpg,.jpeg,.png">
+                </div>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Item Number</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Sub-Category</th>
+                            <th>Available Quantity</th>
+                            <th>Withdraw Quantity</th>
+                             <th> MMF</th>
+                            <th>status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="item_ids" value="{{ item.id }}">
+                                </td>
+                                <td>{{ item.item_number }}</td>
+                                <td>{{ item.name }}</td>
+                                <td>{{ item.category }}</td>
+                                <td>{{ item.sub_category or 'N/A' }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>
+                                    <input type="number" name="quantity_{{ item.id }}" min="1" max="{{ item.quantity }}" class="form-control" style="width: 100px;">
+                                </td>
+                                <td>{{ item.mmf }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'danger' if item.get_status() == 'red' else 'warning' if item.get_status() == 'yellow' else 'success' }}">
+                                {{ item.get_status() | capitalize }}
+                            </span>
+                        </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <button type="submit" class="btn btn-danger mb-3">Submit Withdrawal</button>
+            </form>
+        {% else %}
+            <p class="text-center">No items found.</p>
+        {% endif %}
+
+        <a href="{{ url_for('auth.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        {% if user_role != 'admin' %}
+            <a href="{{ url_for('auth.select_machine') }}" class="btn btn-secondary">Change Machine</a>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    document.getElementById('category').addEventListener('change', function() {
+        const category = this.value;
+        const subCategorySelect = document.getElementById('sub_category');
+        subCategorySelect.innerHTML = '<option value="">All Sub-Categories</option>';
+
+        if (category === 'Spares') {
+            const subCategories = ['Control Car', 'Camp Car', 'Brake Car', 'Engine Car'];
+            subCategories.forEach(subCat => {
+                const option = document.createElement('option');
+                option.value = subCat;
+                option.text = subCat;
+                if (subCat === '{{ selected_sub_category }}') {
+                    option.selected = true;
+                }
+                subCategorySelect.appendChild(option);
+            });
+        }
+        document.getElementById('filter-form').submit();
+    });
+</script>
+{% endblock %}

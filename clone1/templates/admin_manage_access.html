@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="text-center mt-5">Manage Machine Access & View Logs</h2>
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <h3>Current Machine Assignments</h3>
+        {% if users %}
+            <table class="table table-striped mb-5">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Assigned Machines</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.role | capitalize }}</td>
+                            <td>
+                                {% if user.machines %}
+                                    {{ user.machines | map(attribute='name') | join(', ') }}
+                                {% else %}
+                                    None
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form method="POST" class="d-inline">
+                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                    <select class="form-select d-inline-block w-auto" name="machine_ids" multiple>
+                                        {% for machine in machines %}
+                                            <option value="{{ machine.id }}" {% if machine in user.machines %}selected{% endif %}>{{ machine.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-primary btn-sm">Update</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-center">No users available to assign machines.</p>
+        {% endif %}
+
+        <h3>Access Logs (Recent 50)</h3>
+        {% if logs %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Machine</th>
+                        <th>Action</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                        <tr>
+                            <td>{{ log.user.username }}</td>
+                            <td>{{ log.machine.name }}</td>
+                            <td>{{ log.action | capitalize }}</td>
+                            <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-center">No access logs found.</p>
+        {% endif %}
+
+        <a href="{{ url_for('auth.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

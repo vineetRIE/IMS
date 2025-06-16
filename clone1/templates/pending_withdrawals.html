@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Pending Withdrawals{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Pending Withdrawals</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    {% if withdrawals %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Item Number</th>
+                    <th>Name</th>
+                    <th>Quantity</th>
+                    <th>Machine</th>
+                    <th>User</th>
+                    <th>Description</th>
+                    <th>Photo</th>
+                    <th>Status</th>
+                    {% if user_role in ['admin', 'machine_manager'] %}
+                        <th>Actions</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for withdrawal in withdrawals %}
+                    <tr>
+                        <td>{{ withdrawal.item.item_number }}</td>
+                        <td>{{ withdrawal.item.name }}</td>
+                        <td>{{ withdrawal.quantity }}</td>
+                        <td>{{ withdrawal.machine.name }}</td>
+                        <td>{{ withdrawal.user.username }}</td>
+                        <td>{{ withdrawal.description }}</td>
+                        <td>
+                            {% if withdrawal.photo_path %}
+                                <a href="{{ url_for('static', filename=withdrawal.photo_path|replace('\\', '/')) }}" target="_blank">View</a>
+                            {% else %}
+                                None
+                            {% endif %}
+                        </td>
+                        <td>{{ withdrawal.status.capitalize() }}</td>
+                        {% if user_role in ['admin', 'machine_manager'] and withdrawal.status == 'pending' %}
+                            <td>
+                                <form action="{{ url_for('auth.pending_withdrawals') }}" method="POST" style="display:inline;">
+                                    <input type="hidden" name="withdrawal_id" value="{{ withdrawal.id }}">
+                                    <input type="hidden" name="action" value="approve">
+                                    <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                                </form>
+                                <form action="{{ url_for('auth.pending_withdrawals') }}" method="POST" style="display:inline;">
+                                    <input type="hidden" name="withdrawal_id" value="{{ withdrawal.id }}">
+                                    <input type="hidden" name="action" value="reject">
+                                    <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                                </form>
+                            </td>
+                        {% elif user_role in ['admin', 'machine_manager'] %}
+                            <td>-</td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No pending withdrawals.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="text-center mt-4">Select a Machine</h2>
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        {% if machines %}
+            <form method="POST">
+                <div class="mb-3">
+                    <label for="machine_id" class="form-label">Machine</label>
+                    <select class="form-select" id="machine_id" name="machine_id" required>
+                        <option value="">Select a Machine</option>
+                        {% for machine in machines %}
+                            <option value="{{ machine.id }}">{{ machine.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Select</button>
+            </form>
+        {% else %}
+            <p class="text-center text-danger">No machines available. Please contact an admin or initialize machines.</p>
+        {% endif %}
+        <a href="{{ url_for('auth.login') }}" class="btn btn-secondary mt-3">Back to Login</a>
+    </div>
+</div>
+{% endblock %}

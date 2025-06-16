@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Update Inventory{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Update Inventory</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <!-- Machine Selection for Admins -->
+    {% if user_role == 'admin' %}
+        <form method="POST" class="mb-4">
+            <div class="mb-3">
+                <label for="machine_id" class="form-label">Select Machine</label>
+                <select name="machine_id" id="machine_id" class="form-select" onchange="this.form.submit()">
+                    {% for machine in machines %}
+                        <option value="{{ machine.id }}" {{ 'selected' if machine.id == selected_machine.id }}>{{ machine.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    {% endif %}
+
+    <!-- Filters -->
+    <form method="GET" class="mb-4">
+        <div class="row">
+            <div class="col-md-4">
+                <label for="category" class="form-label">Category</label>
+                <select name="category" id="category" class="form-select" onchange="this.form.submit()">
+                    <option value="">All</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {{ 'selected' if cat == selected_category }}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="sub_category" class="form-label">Sub-Category</label>
+                <select name="sub_category" id="sub_category" class="form-select" onchange="this.form.submit()">
+                    <option value="">All</option>
+                    {% for sub in sub_categories %}
+                        <option value="{{ sub }}" {{ 'selected' if sub == selected_sub_category }}>{{ sub }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="item_number" class="form-label">Item Number</label>
+                <input type="text" name="item_number" id="item_number" class="form-control" value="{{ selected_item_number }}" placeholder="Search item number">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Filter</button>
+    </form>
+
+    <!-- Inventory Table -->
+    {% if items %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Item Number</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Sub-Category</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Update Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                    <tr>
+                        <td>{{ item.item_number }}</td>
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.category }}</td>
+                        <td>{{ item.sub_category or 'None' }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>{{ item.price }}</td>
+                        <td>
+                            <form method="POST">
+                                <input type="hidden" name="action" value="update">
+                                <input type="hidden" name="item_id" value="{{ item.id }}">
+                                <div class="input-group">
+                                    <input type="number" name="quantity" class="form-control" value="{{ item.quantity }}" min="0" required>
+                                    <button type="submit" class="btn btn-primary">Update</button>
+                                </div>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No items found for the selected machine and filters.</p>
+    {% endif %}
+</div>
+{% endblock %}

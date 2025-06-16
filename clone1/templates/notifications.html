@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>Notifications</h2>
+    {% if user_role == 'admin' %}
+        <form method="GET" class="mb-3">
+            <label for="machine_id" class="form-label">Select Machine</label>
+            <select name="machine_id" id="machine_id" class="form-select" onchange="this.form.submit()">
+                <option value="">All Machines</option>
+                {% for machine in machines %}
+                    <option value="{{ machine.id }}" {{ 'selected' if machine.id == selected_machine_id }}>{{ machine.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    {% endif %}
+    {% if notifications %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Item</th>
+                    <th>Message</th>
+                    <th>Old Status</th>
+                    <th>New Status</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for notification in notifications %}
+                    <tr>
+                        <td>{{ notification.id }}</td>
+                        <td>{{ notification.item.item_number }} ({{ notification.item.name }})</td>
+                        <td>{{ notification.message }}</td>
+                        <td>
+                            <span class="badge bg-{{ notification.old_status }}">{{ notification.old_status | capitalize }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ notification.new_status }}">{{ notification.new_status | capitalize }}</span>
+                        </td>
+                        <td>{{ notification.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No notifications available{% if selected_machine_id %} for this machine{% endif %}.</p>
+    {% endif %}
+    <a href="{{ url_for('auth.select_machine') }}" class="btn btn-secondary mt-3">Back to Machine Selection</a>
+</div>
+{% endblock %}

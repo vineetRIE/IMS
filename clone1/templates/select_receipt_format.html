@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="text-center mt-5">Select Receipt Format</h2>
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <form method="POST" class="mb-4">
+            <div class="mb-3">
+                <label for="format" class="form-label">Receipt Format</label>
+                <select class="form-select" id="format" name="format" required>
+                    <option value="loram">Loram</option>
+                    <option value="general">General</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Download Receipt</button>
+        </form>
+        <a href="{{ url_for('auth.withdraw_items') }}" class="btn btn-secondary">Back to Withdraw</a>
+    </div>
+</div>
+{% endblock %}

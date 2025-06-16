@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="text-center mt-5">Manage Inventory</h2>
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <form method="POST" enctype="multipart/form-data" class="mb-4">
+            <div class="mb-3">
+                <label for="file" class="form-label">Upload Excel File (.xlsx or .xls)</label>
+                <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
+                <small class="form-text text-muted">File must contain columns: item_number, name, category, sub_category, quantity, price, machine_id</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Inventory</button>
+        </form>
+
+        <a href="{{ url_for('auth.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

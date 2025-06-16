@@ -1,0 +1,13 @@
+item_id,quantity,machine_id,user_id,description,status,timestamp
+1,10,1,2,Q1 2024 Oil,approved,2024-01-15 10:00:00
+3,3,1,2,Q1 2024 Gear,approved,2024-01-20 12:00:00
+1,8,2,2,Q2 2024 Oil,approved,2024-04-10 09:00:00
+4,2,2,2,Q2 2024 Valve,approved,2024-04-15 14:00:00
+2,5,3,2,Q3 2024 Lube,approved,2024-07-05 11:00:00
+5,4,3,2,Q3 2024 Pad,approved,2024-07-10 15:00:00
+1,12,1,2,Q4 2024 Oil,approved,2024-10-20 08:00:00
+4,1,1,2,Q4 2024 Valve,approved,2024-10-25 16:00:00
+1,15,1,2,Q1 2025 Oil,approved,2025-01-15 10:00:00
+2,6,2,2,Q1 2025 Lube,approved,2025-01-20 13:00:00
+3,5,3,2,Q2 2025 Gear,approved,2025-04-10 11:00:00
+4,3,1,2,Q2 2025 Valve,approved,2025-04-15 14:00:00

@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+{% block title %}Consumption Dashboard{% endblock %}
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+    .dashboard-container { padding: 20px; }
+    .filter-panel { background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .chart-container { max-width: 900px; margin: 20px auto; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .table-container { max-width: 900px; margin: 20px auto; }
+    .no-data { text-align: center; color: #6c757d; margin: 20px 0; }
+    .comparison-section { background-color: #f1f3f5; padding: 15px; border-radius: 8px; margin-top: 20px; }
+    canvas { width: 100% !important; height: 400px !important; }
+    h4 { color: #343a40; }
+    .btn-filter { background-color: #007bff; color: #fff; }
+    .btn-filter:hover { background-color: #0056b3; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="dashboard-container">
+    <h2 class="text-center mb-4">Consumption Analytics Dashboard</h2>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Filter Panel -->
+    <div class="filter-panel">
+        <button class="btn btn-filter mb-3" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false" aria-controls="filterCollapse">
+            Toggle Filters
+        </button>
+        <div class="collapse show" id="filterCollapse">
+            <form method="POST">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="year" class="form-label">Year</label>
+                        <select name="year" id="year" class="form-select">
+                            <option value="">All Years</option>
+                            {% for year in consumption_data.years %}
+                                <option value="{{ year }}" {{ 'selected' if year == filters.year }}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="quarter" class="form-label">Quarter</label>
+                        <select name="quarter" id="quarter" class="form-select">
+                            <option value="">All Quarters</option>
+                            {% for quarter in consumption_data.quarters %}
+                                <option value="{{ quarter }}" {{ 'selected' if quarter == filters.quarter }}>{{ quarter }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="category" class="form-label">Category</label>
+                        <select name="category" id="category" class="form-select" onchange="updateSubCategories()">
+                            <option value="">All Categories</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat }}" {{ 'selected' if cat == filters.category }}>{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="sub_category" class="form-label">Sub-Category</label>
+                        <select name="sub_category" id="sub_category" class="form-select">
+                            <option value="">All Sub-Categories</option>
+                            {% for sub_cat in sub_categories %}
+                                <option value="{{ sub_cat }}" {{ 'selected' if sub_cat == filters.sub_category }}>{{ sub_cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="machine_id" class="form-label">Machine</label>
+                        <select name="machine_id" id="machine_id" class="form-select">
+                            <option value="">All Machines</option>
+                            {% for machine in machines %}
+                                <option value="{{ machine.id }}" {{ 'selected' if machine.id|string == filters.machine_id }}>{{ machine.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="item_number" class="form-label">Item Search</label>
+                        <input type="text" name="item_number" id="item_number" class="form-control" placeholder="Enter item number" value="{{ filters.item_number or '' }}">
+                    </div>
+                    <div class="col-md-12 text-end">
+                        <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if not consumption_data.item_consumption and not consumption_data.machine_consumption %}
+        <div class="no-data">
+            <h4>No consumption data available. Submit and approve withdrawals to populate the dashboard.</h4>
+            <p>Admins: Use <code>curl -X POST http://localhost:5000/seed-data</code> to add sample data.</p>
+        </div>
+    {% else %}
+        <!-- Charts -->
+        <div class="chart-container">
+            <h4>Quarterly Item Consumption (Bar)</h4>
+            <canvas id="itemConsumptionChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h4>Item Consumption Trends (Line)</h4>
+            <canvas id="itemComparisonChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h4>Category Consumption Share (Pie)</h4>
+            <canvas id="categoryPieChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h4>Machine Consumption Distribution (Doughnut)</h4>
+            <canvas id="machineDoughnutChart"></canvas>
+        </div>
+
+        <!-- Consumption Table -->
+        <div class="table-container">
+            <h4>Consumption Details</h4>
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Item</th>
+                        <th>Category</th>
+                        <th>Sub-Category</th>
+                        <th>Machine</th>
+                        <th>Quarter</th>
+                        <th>Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item, quarters in consumption_data.item_consumption.items() %}
+                        {% for quarter, quantity in quarters.items() %}
+                            <tr>
+                                <td>{{ item }}</td>
+                                <td>{{ consumption_data.category_consumption.keys() | list | first if consumption_data.category_consumption else 'N/A' }}</td>
+                                <td>{{ consumption_data.sub_category_consumption.keys() | list | first if consumption_data.sub_category_consumption else 'N/A' }}</td>
+                                <td>{{ consumption_data.machine_consumption.keys() | list | first if consumption_data.machine_consumption else 'N/A' }}</td>
+                                <td>{{ quarter }}</td>
+                                <td>{{ quantity }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    {% if not consumption_data.item_consumption %}
+                        <tr><td colspan="6" class="text-center">No data available</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Comparison Section -->
+        <div class="comparison-section">
+            <h4>Compare Consumption</h4>
+            <form method="POST">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="compare_items" class="form-label">Compare Items</label>
+                        <select name="compare_items" id="compare_items" class="form-select" multiple>
+                            {% for item in item_options %}
+                                <option value="{{ item }}" {{ 'selected' if item in filters.compare_items }}>{{ item }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="compare_machines" class="form-label">Compare Machines</label>
+                        <select name="compare_machines" id="compare_machines" class="form-select" multiple>
+                            {% for machine in machines %}
+                                <option value="{{ machine.name }}" {{ 'selected' if machine.name in filters.compare_machines }}>{{ machine.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="compare_categories" class="form-label">Compare Categories</label>
+                        <select name="compare_categories" id="compare_categories" class="form-select" multiple>
+                            {% for cat in categories %}
+                                <option value="{{ cat }}" {{ 'selected' if cat in filters.compare_categories }}>{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="compare_sub_categories" class="form-label">Compare Sub-Categories</label>
+                        <select name="compare_sub_categories" id="compare_sub_categories" class="form-select" multiple>
+                            {% for sub_cat in ['Control Car', 'Camp Car', 'Brake Car', 'Engine Car'] %}
+                                <option value="{{ sub_cat }}" {{ 'selected' if sub_cat in filters.compare_sub_categories }}>{{ sub_cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-12 text-end">
+                        <button type="submit" class="btn btn-primary">Compare</button>
+                    </div>
+                </div>
+            </form>
+            <div class="chart-container mt-4">
+                <h4>Comparison Results (Line)</h4>
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Data for JavaScript -->
+<script id="dashboard-data">
+    window.dashboardData = {
+        consumptionData: {{ consumption_data | tojson | safe }},
+        filterData: {
+            compareItems: {{ filters.compare_items | tojson | safe }} || [],
+            compareMachines: {{ filters.compare_machines | tojson | safe }} || [],
+            compareCategories: {{ filters.compare_categories | tojson | safe }} || [],
+            compareSubCategories: {{ filters.compare_sub_categories | tojson | safe }} || []
+        }
+    };
+</script>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+// @ts-nocheck
+// Update sub-categories based on category selection
+function updateSubCategories() {
+    const category = document.getElementById('category').value;
+    const subCategorySelect = document.getElementById('sub_category');
+    subCategorySelect.innerHTML = '<option value="">All Sub-Categories</option>';
+    if (category === 'Spares') {
+        const subCategories = ['Control Car', 'Camp Car', 'Brake Car', 'Engine Car'];
+        subCategories.forEach(subCat => {
+            const option = document.createElement('option');
+            option.value = subCat;
+            option.text = subCat;
+            subCategorySelect.appendChild(option);
+        });
+    }
+}
+
+// Initialize charts if data exists
+if (window.dashboardData && (window.dashboardData.consumptionData.item_consumption || window.dashboardData.consumptionData.machine_consumption)) {
+    const consumptionData = window.dashboardData.consumptionData;
+    const filterData = window.dashboardData.filterData;
+    console.log("Consumption Data:", consumptionData);
+    console.log("Filter Data:", filterData);
+    const colors = ['#007bff', '#dc3545', '#28a745', '#4c4c4c', '#6c757d', '#17a2b8', '#6610f2', '#e83e8c'];
+    const quarters = [...new Set(Object.entries(consumptionData.item_consumption || {}).flatMap(([_, data]) => Object.keys(data)))].sort();
+
+    // Item Consumption Bar Chart
+    try {
+        new Chart(document.getElementById('itemConsumptionChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: quarters.length ? quarters : ['No Data'],
+                datasets: Object.entries(consumptionData.item_consumption || {}).length ? Object.entries(consumptionData.item_consumption).map(([item, data], i) => ({
+                    label: item,
+                    data: quarters.map(q => data[q] || 0),
+                    backgroundColor: colors[i % colors.length]
+                })) : [{
+                    label: 'No Items',
+                    data: quarters.length ? quarters.map(() => 0) : [0],
+                    backgroundColor: colors[0]
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Quarter' } },
+                    y: { title: { display: true, text: 'Quantity Consumed' }, beginAtZero: true }
+                },
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+    } catch (e) {
+        console.error("Item Consumption Chart Error:", e);
+    }
+
+    // Item Comparison Line Chart
+    try {
+        new Chart(document.getElementById('itemComparisonChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: quarters.length ? quarters : ['No Data'],
+                datasets: filterData.compareItems.length ? filterData.compareItems.map((item, i) => ({
+                    label: item,
+                    data: quarters.map(q => consumptionData.item_consumption[item]?.[q] || 0),
+                    borderColor: colors[i % colors.length],
+                    fill: false
+                })) : [{
+                    label: 'No Items Selected',
+                    data: quarters.length ? quarters.map(() => 0) : [0],
+                    borderColor: colors[0],
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Quarter' } },
+                    y: { title: { display: true, text: 'Quantity Consumed' }, beginAtZero: true }
+                },
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+    } catch (e) {
+        console.error("Item Comparison Chart Error:", e);
+    }
+
+    // Category Consumption Pie Chart
+    try {
+        new Chart(document.getElementById('categoryPieChart').getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: Object.keys(consumptionData.category_consumption || {}),
+                datasets: [{
+                    data: Object.entries(consumptionData.category_consumption || {}).length ? Object.entries(consumptionData.category_consumption).map(([_, data]) => 
+                        Object.values(data).reduce((sum, v) => sum + v, 0)) : [1],
+                    backgroundColor: colors
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+    } catch (e) {
+        console.error("Category Pie Chart Error:", e);
+    }
+
+    // Machine Consumption Doughnut Chart
+    try {
+        new Chart(document.getElementById('machineDoughnutChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(consumptionData.machine_consumption || {}),
+                datasets: [{
+                    data: Object.entries(consumptionData.machine_consumption || {}).length ? Object.entries(consumptionData.machine_consumption).map(([_, data]) => 
+                        Object.values(data).reduce((sum, v) => sum + v, 0)) : [1],
+                    backgroundColor: colors
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+    } catch (e) {
+        console.error("Machine Doughnut Chart Error:", e);
+    }
+
+    // Comparison Chart
+    try {
+        new Chart(document.getElementById('comparisonChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: quarters.length ? quarters : ['No Data'],
+                datasets: [
+                    ...(filterData.compareItems || []).map((item, i) => ({
+                        label: `Item: ${item}`,
+                        data: quarters.map(q => consumptionData.item_consumption[item]?.[q] || 0),
+                        borderColor: colors[i % colors.length],
+                        fill: false
+                    })),
+                    ...(filterData.compareMachines || []).map((machine, i) => ({
+                        label: `Machine: ${machine}`,
+                        data: quarters.map(q => consumptionData.machine_consumption[machine]?.[q] || 0),
+                        borderColor: colors[(i + (filterData.compareItems || []).length) % colors.length],
+                        fill: false
+                    })),
+                    ...(filterData.compareCategories || []).map((category, i) => ({
+                        label: `Category: ${category}`,
+                        data: quarters.map(q => consumptionData.category_consumption[category]?.[q] || 0),
+                        borderColor: colors[(i + (filterData.compareItems || []).length + (filterData.compareMachines || []).length) % colors.length],
+                        fill: false
+                    })),
+                    ...(filterData.compareSubCategories || []).map((subCategory, i) => ({
+                        label: `Sub-Category: ${subCategory}`,
+                        data: quarters.map(q => consumptionData.sub_category_consumption[subCategory]?.[q] || 0),
+                        borderColor: colors[(i + (filterData.compareItems || []).length + (filterData.compareMachines || []).length + (filterData.compareCategories || []).length) % colors.length],
+                        fill: false
+                    }))
+                ].filter(ds => ds.data.some(v => v > 0)).length ? [] : [{
+                    label: 'No Comparison Selected',
+                    data: quarters.length ? quarters.map(() => 0) : [0],
+                    borderColor: colors[0],
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Quarter' } },
+                    y: { title: { display: true, text: 'Quantity Consumed' }, beginAtZero: true }
+                },
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+    } catch (e) {
+        console.error("Comparison Chart Error:", e);
+    }
+} else {
+    console.warn("No consumption data available for charts.");
+}
+</script>
+{% endblock %}

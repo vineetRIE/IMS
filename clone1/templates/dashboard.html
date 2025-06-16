@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center">Welcome, {{ user.username }} ({{ user.role | capitalize }})</h2>
+    {% if user.role == 'admin' %}
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card text-center mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Manage Access</h5>
+                        <p class="card-text">Assign machines to users.</p>
+                        <a href="{{ url_for('auth.admin_manage_access') }}" class="btn btn-primary">Go to Access Management</a>
+                    </div>
+                </div>
+                <div class="card text-center mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Manage Items</h5>
+                        <p class="card-text">Add, edit, or withdraw items.</p>
+                        <a href="{{ url_for('auth.admin_manage_items') }}" class="btn btn-primary">Go to Item Management</a>
+                    </div>
+                </div>
+                <div class="card text-center mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Manage Inventory</h5>
+                        <p class="card-text">Add new inventory via Excel upload.</p>
+                        <a href="{{ url_for('auth.manage_inventory') }}" class="btn btn-primary">Go to Inventory Management</a>
+                    </div>
+                </div>
+                <div class="card text-center mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">View Inventory</h5>
+                        <p class="card-text">View and filter inventory for any machine.</p>
+                        <a href="{{ url_for('auth.inventory') }}" class="btn btn-primary">Go to Inventory</a>
+                    </div>
+                </div>
+                <div class="card text-center mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Pending Withdrawals</h5>
+                        <p class="card-text">Approve or reject withdrawal requests.</p>
+                        <a href="{{ url_for('auth.pending_withdrawals') }}" class="btn btn-primary">Go to Pending Withdrawals</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card text-center mb-3">
+                    <div class="card-body">
+                        <h5 class="card-title">Selected Machine</h5>
+                        <p class="card-text">{{ selected_machine.name if selected_machine else 'No machine selected' }}</p>
+                        <a href="{{ url_for('auth.select_machine') }}" class="btn btn-secondary">Change Machine</a>
+                    </div>
+                </div>
+                {% if selected_machine %}
+                    <div class="card text-center mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">View Inventory</h5>
+                            <p class="card-text">View and filter inventory for {{ selected_machine.name }}.</p>
+                            <a href="{{ url_for('auth.inventory') }}" class="btn btn-primary">Go to Inventory</a>
+                        </div>
+                    </div>
+                    {% if user.role == 'fleet_ops' %}
+                        <div class="card text-center mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">Manage Inventory</h5>
+                                <p class="card-text">Add new inventory via Excel upload.</p>
+                                <a href="{{ url_for('auth.manage_inventory') }}" class="btn btn-primary">Go to Inventory Management</a>
+                            </div>
+                        </div>
+                        <div class="card text-center mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">Withdraw Items</h5>
+                                <p class="card-text">Withdraw items from {{ selected_machine.name }}.</p>
+                                <a href="{{ url_for('auth.withdraw_items') }}" class="btn btn-primary">Go to Withdraw</a>
+                            </div>
+                        </div>
+                    {% endif %}
+                    {% if user.role == 'machine_manager' %}
+                        <div class="card text-center mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">Update Inventory</h5>
+                                <p class="card-text">Update quantities for {{ selected_machine.name }}.</p>
+                                <a href="{{ url_for('auth.update_inventory') }}" class="btn btn-primary">Go to Update</a>
+                            </div>
+                        </div>
+                    {% endif %}
+                    <div class="card text-center mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Pending Withdrawals</h5>
+                            <p class="card-text">Approve or reject withdrawal requests.</p>
+                            <a href="{{ url_for('auth.pending_withdrawals') }}" class="btn btn-primary">Go to Pending Withdrawals</a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
